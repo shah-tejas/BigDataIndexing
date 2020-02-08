@@ -37,8 +37,7 @@ public class PlanController {
 
         JedisPool jedisPool = new JedisPool();
         Jedis jedis = jedisPool.getResource();
-        String objectId = (String) plan.get("objectId");
-        jedis.set("Plan:" + objectId, plan.toString());
+        jedis.set((String) plan.get("objectId"), plan.toString());
         jedis.close();
         return "";
     }
