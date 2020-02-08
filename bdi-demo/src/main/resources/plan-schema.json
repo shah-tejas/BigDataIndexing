@@ -1,0 +1,66 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "_org",
+    "objectId",
+    "objectType",
+    "planType",
+    "creationDate"
+  ],
+  "properties": {
+    "_org": {
+      "$id": "#/properties/_org",
+      "type": "string",
+      "title": "The _org Schema",
+      "default": "",
+      "examples": [
+        "example.com"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "objectId": {
+      "$id": "#/properties/objectId",
+      "type": "string",
+      "title": "The Objectid Schema",
+      "default": "",
+      "examples": [
+        "12xvxc345ssdsds-508"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "objectType": {
+      "$id": "#/properties/objectType",
+      "type": "string",
+      "title": "The Objecttype Schema",
+      "default": "",
+      "examples": [
+        "plan"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "planType": {
+      "$id": "#/properties/planType",
+      "type": "string",
+      "title": "The Plantype Schema",
+      "default": "",
+      "examples": [
+        "inNetwork"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "creationDate": {
+      "$id": "#/properties/creationDate",
+      "type": "string",
+      "title": "The Creationdate Schema",
+      "default": "",
+      "examples": [
+        "12-12-2017"
+      ],
+      "pattern": "^(.*)$"
+    }
+  }
+}
