@@ -1,6 +1,7 @@
 package com.tejas.bdidemo.controller;
 
 import com.tejas.bdidemo.exception.BadRequestException;
+import com.tejas.bdidemo.exception.PreConditionFailedException;
 import com.tejas.bdidemo.exception.ResourceNotFoundException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
@@ -60,7 +61,7 @@ public class PlanController {
     public ResponseEntity<String> getPlan(@PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
 
         String if_none_match = request.getHeader(HttpHeaders.IF_NONE_MATCH);
-        if (this.cacheMap.get(objectId).equals(if_none_match)) {
+        if (this.cacheMap.get(objectId) != null && this.cacheMap.get(objectId).equals(if_none_match)) {
             // etag matches, send 304
             return new ResponseEntity<String>(HttpStatus.NOT_MODIFIED);
         }
@@ -79,16 +80,28 @@ public class PlanController {
         return ResponseEntity.ok().body(plan);
     }
 
-    @ResponseStatus(value = HttpStatus.OK)
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @RequestMapping(method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE, value = "/{objectId}")
-    public String deletePlan(@PathVariable String objectId) {
-        JedisPool jedisPool = new JedisPool();
-        Jedis jedis = jedisPool.getResource();
-        if (jedis.del(objectId) < 1) {
-            throw new ResourceNotFoundException("Plan not found");
+    public ResponseEntity<String> deletePlan(@PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
+
+        String if_match = request.getHeader(HttpHeaders.IF_MATCH);
+        if (if_match == null || if_match.isEmpty()) {
+            // etag not provided throw 404
+            throw new ResourceNotFoundException("etag not provided in request");
         }
-        //delete the cache
-        this.cacheMap.remove(objectId);
-        return "";
+        if (this.cacheMap.get(objectId) != null && !this.cacheMap.get(objectId).equals(if_match)) {
+            // hash found in cache but does not match with etag
+            throw new PreConditionFailedException("etag in request does not match hash in cache");
+        } else {
+
+            JedisPool jedisPool = new JedisPool();
+            Jedis jedis = jedisPool.getResource();
+            if (jedis.del(objectId) < 1) {
+                throw new ResourceNotFoundException("Plan not found");
+            }
+            //delete the cache
+            this.cacheMap.remove(objectId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
     }
 }
