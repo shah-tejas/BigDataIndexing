@@ -7,6 +7,7 @@ import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,14 +15,21 @@ import org.springframework.web.bind.annotation.*;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.Map;
+
 
 @RestController
 @RequestMapping("/plan")
 public class PlanController {
 
+    Map<String, String> cacheMap = new HashMap<String, String>();
+
     @ResponseStatus(value = HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-    public String savePlan(@RequestBody String json) {
+    public String savePlan(@RequestBody String json, HttpServletResponse response) {
 
         JSONObject plan = new JSONObject(json);
 
@@ -39,19 +47,36 @@ public class PlanController {
         Jedis jedis = jedisPool.getResource();
         jedis.set((String) plan.get("objectId"), plan.toString());
         jedis.close();
-        return "";
+
+        // cache the objectId
+        this.cacheMap.put((String) plan.get("objectId"), String.valueOf(plan.hashCode()));
+        response.setHeader(HttpHeaders.ETAG, String.valueOf(plan.hashCode()));
+
+        return "{\"objectId\": \"" + (String) plan.get("objectId") + "\"}";
     }
 
     @ResponseStatus(value = HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/{objectId}")
-    public String getPlan(@PathVariable String objectId) {
+    public ResponseEntity<String> getPlan(@PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
+
+        String if_none_match = request.getHeader(HttpHeaders.IF_NONE_MATCH);
+        if (this.cacheMap.get(objectId).equals(if_none_match)) {
+            // etag matches, send 304
+            return new ResponseEntity<String>(HttpStatus.NOT_MODIFIED);
+        }
+
         JedisPool jedisPool = new JedisPool();
         Jedis jedis = jedisPool.getResource();
         String plan = (String)jedis.get(objectId);
         if (plan == null || plan.isEmpty()) {
             throw new ResourceNotFoundException("Plan not found");
         }
-        return plan;
+
+        // cache the objectId
+        this.cacheMap.put(objectId, String.valueOf(plan.hashCode()));
+        response.setHeader(HttpHeaders.ETAG, String.valueOf(plan.hashCode()));
+
+        return ResponseEntity.ok().body(plan);
     }
 
     @ResponseStatus(value = HttpStatus.OK)
@@ -62,6 +87,8 @@ public class PlanController {
         if (jedis.del(objectId) < 1) {
             throw new ResourceNotFoundException("Plan not found");
         }
+        //delete the cache
+        this.cacheMap.remove(objectId);
         return "";
     }
 }
