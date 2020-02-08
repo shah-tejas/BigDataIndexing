@@ -1,6 +1,7 @@
 package com.tejas.bdidemo.controller;
 
 import com.tejas.bdidemo.exception.BadRequestException;
+import com.tejas.bdidemo.exception.ResourceNotFoundException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -34,11 +35,33 @@ public class PlanController {
             throw new BadRequestException(e.getMessage());
         }
 
-
         JedisPool jedisPool = new JedisPool();
         Jedis jedis = jedisPool.getResource();
         jedis.set((String) plan.get("objectId"), plan.toString());
         jedis.close();
+        return "";
+    }
+
+    @ResponseStatus(value = HttpStatus.OK)
+    @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/{objectId}")
+    public String getPlan(@PathVariable String objectId) {
+        JedisPool jedisPool = new JedisPool();
+        Jedis jedis = jedisPool.getResource();
+        String plan = (String)jedis.get(objectId);
+        if (plan == null || plan.isEmpty()) {
+            throw new ResourceNotFoundException("Plan not found");
+        }
+        return plan;
+    }
+
+    @ResponseStatus(value = HttpStatus.OK)
+    @RequestMapping(method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE, value = "/{objectId}")
+    public String deletePlan(@PathVariable String objectId) {
+        JedisPool jedisPool = new JedisPool();
+        Jedis jedis = jedisPool.getResource();
+        if (jedis.del(objectId) < 1) {
+            throw new ResourceNotFoundException("Plan not found");
+        }
         return "";
     }
 }
