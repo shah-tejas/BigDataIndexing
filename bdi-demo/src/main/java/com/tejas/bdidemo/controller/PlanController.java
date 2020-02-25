@@ -3,11 +3,13 @@ package com.tejas.bdidemo.controller;
 import com.tejas.bdidemo.exception.BadRequestException;
 import com.tejas.bdidemo.exception.PreConditionFailedException;
 import com.tejas.bdidemo.exception.ResourceNotFoundException;
+import com.tejas.bdidemo.service.PlanService;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,6 +27,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/plan")
 public class PlanController {
+
+    PlanService planService = new PlanService();
 
     Map<String, String> cacheMap = new HashMap<String, String>();
 
@@ -44,16 +48,13 @@ public class PlanController {
             throw new BadRequestException(e.getMessage());
         }
 
-        JedisPool jedisPool = new JedisPool();
-        Jedis jedis = jedisPool.getResource();
-        jedis.set((String) plan.get("objectId"), plan.toString());
-        jedis.close();
+        String objectKey = this.planService.savePlan(plan, (String)plan.get("objectType"));
 
         // cache the objectId
-        this.cacheMap.put((String) plan.get("objectId"), String.valueOf(plan.hashCode()));
+        this.cacheMap.put(objectKey, String.valueOf(plan.hashCode()));
         response.setHeader(HttpHeaders.ETAG, String.valueOf(plan.hashCode()));
 
-        return "{\"objectId\": \"" + (String) plan.get("objectId") + "\"}";
+        return "{\"objectId\": \"" + objectKey + "\"}";
     }
 
     @ResponseStatus(value = HttpStatus.OK)
@@ -68,16 +69,16 @@ public class PlanController {
 
         JedisPool jedisPool = new JedisPool();
         Jedis jedis = jedisPool.getResource();
-        String plan = (String)jedis.get(objectId);
-        if (plan == null || plan.isEmpty()) {
+        JSONObject json = this.planService.getPlan(objectId);
+        if (json == null) {
             throw new ResourceNotFoundException("Plan not found");
         }
 
         // cache the objectId
-        this.cacheMap.put(objectId, String.valueOf(plan.hashCode()));
-        response.setHeader(HttpHeaders.ETAG, String.valueOf(plan.hashCode()));
+        this.cacheMap.put(objectId, String.valueOf(json.hashCode()));
+        response.setHeader(HttpHeaders.ETAG, String.valueOf(json.hashCode()));
 
-        return ResponseEntity.ok().body(plan);
+        return ResponseEntity.ok().body(json.toString());
     }
 
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
@@ -97,8 +98,10 @@ public class PlanController {
             JedisPool jedisPool = new JedisPool();
             Jedis jedis = jedisPool.getResource();
             if (jedis.del(objectId) < 1) {
+                jedis.close();
                 throw new ResourceNotFoundException("Plan not found");
             }
+            jedis.close();
             //delete the cache
             this.cacheMap.remove(objectId);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
