@@ -87,7 +87,7 @@ public class PlanService {
         Jedis jedis;
         JSONObject json;
         if (isStringArray(planKey)) {
-            String arrayValue = getFromArrayString(planKey);
+            ArrayList<JSONObject> arrayValue = getFromArrayString(planKey);
             json = new JSONObject(arrayValue);
         } else {
             jedis = jedisPool.getResource();
@@ -96,7 +96,6 @@ public class PlanService {
             if (jsonString == null || jsonString.isEmpty()) {
                 return null;
             }
-            System.out.println(jsonString);
             json = new JSONObject(jsonString);
         }
 
@@ -118,9 +117,14 @@ public class PlanService {
                 continue;
             }
 
-            JSONObject partObj = this.getPlan(partObjectDBKey);
-            //add partObj to original object
-            json.put(partObjectKey, partObj);
+            if(isStringArray(partObjectDBKey)) {
+                ArrayList<JSONObject> arrayValue = getFromArrayString(partObjectDBKey);
+                json.put(partObjectKey, arrayValue);
+            } else {
+                JSONObject partObj = this.getPlan(partObjectDBKey);
+                //add partObj to original object
+                json.put(partObjectKey, partObj);
+            }
         }
 
         return json;
@@ -137,15 +141,15 @@ public class PlanService {
         }
     }
 
-    private String getFromArrayString(String keyArray) {
-        ArrayList<String> jsonArray = new ArrayList<>();
+    private ArrayList<JSONObject> getFromArrayString(String keyArray) {
+        ArrayList<JSONObject> jsonArray = new ArrayList<>();
         String[] array = keyArray.substring((keyArray.indexOf('[') + 1), keyArray.indexOf(']')).split(", ");
 
         for (String key : array) {
             JSONObject partObj = this.getPlan(key);
-            jsonArray.add(partObj.toString());
+            jsonArray.add(partObj);
         }
 
-        return jsonArray.toString();
+        return jsonArray;
     }
 }
