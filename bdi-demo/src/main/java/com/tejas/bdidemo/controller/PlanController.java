@@ -94,14 +94,11 @@ public class PlanController {
             // hash found in cache but does not match with etag
             throw new PreConditionFailedException("etag in request does not match hash in cache");
         } else {
-
-            JedisPool jedisPool = new JedisPool();
-            Jedis jedis = jedisPool.getResource();
-            if (jedis.del(objectId) < 1) {
-                jedis.close();
+            if (!this.planService.deletePlan(objectId)) {
+                // deletion failed
                 throw new ResourceNotFoundException("Plan not found");
             }
-            jedis.close();
+
             //delete the cache
             this.cacheMap.remove(objectId);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);

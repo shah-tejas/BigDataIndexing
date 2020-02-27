@@ -130,6 +130,73 @@ public class PlanService {
         return json;
     }
 
+    public boolean deletePlan(String planKey) {
+
+        JedisPool jedisPool = new JedisPool();
+        Jedis jedis;
+
+        if(isStringArray(planKey)) {
+            // delete all keys in the array
+            String[] arrayKeys = planKey.substring(planKey.indexOf("[")+1, planKey.lastIndexOf("]")).split(", ");
+            for (String key : arrayKeys) {
+                if(!this.deletePlan(key)) {
+                    //deletion failed
+                    return false;
+                }
+            }
+        } else{
+            jedis = jedisPool.getResource();
+            if(jedis.del(planKey) < 1) {
+                // deletion failed
+                jedis.close();
+                return false;
+            }
+            jedis.close();
+        }
+
+        // fetch additional relations for the object, if present
+        jedis = jedisPool.getResource();
+        Set<String> jsonRelatedKeys = jedis.keys(planKey + "_*");
+        jedis.close();
+
+        Iterator<String> keysIterator = jsonRelatedKeys.iterator();
+        while(keysIterator.hasNext()) {
+            String partObjKey = keysIterator.next();
+            String partObjectKey = partObjKey.substring(partObjKey.lastIndexOf('_')+1);
+
+            // fetch the id stored at partObjKey
+            jedis = jedisPool.getResource();
+            String partObjectDBKey = jedis.get(partObjKey);
+            if(jedis.del(partObjKey) < 1) {
+                //deletion failed
+                return false;
+            }
+            jedis.close();
+            if (partObjectDBKey == null || partObjectDBKey.isEmpty()) {
+                continue;
+            }
+
+            if(isStringArray(partObjectDBKey)) {
+                // delete all keys in the array
+                String[] arrayKeys = partObjectDBKey.substring(partObjectDBKey.indexOf("[")+1, partObjectDBKey.lastIndexOf("]")).split(", ");
+                for (String key : arrayKeys) {
+                    if(!this.deletePlan(key)) {
+                        //deletion failed
+                        return false;
+                    }
+                }
+            } else {
+                if(!this.deletePlan(partObjectDBKey)){
+                    //deletion failed
+                    return false;
+                }
+            }
+        }
+
+
+        return true;
+    }
+
     private boolean isStringArray(String str) {
         if (str.indexOf('[') < str.indexOf(']')) {
             if (str.substring((str.indexOf('[') + 1), str.indexOf(']')).split(", ").length > 0)
