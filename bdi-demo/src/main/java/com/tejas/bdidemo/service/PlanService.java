@@ -197,6 +197,21 @@ public class PlanService {
         return true;
     }
 
+    public String updatePlan(JSONObject json, String objectType) {
+        String objectId;
+
+        //delete the object
+        if(!this.deletePlan(objectType + "_" + (String)json.get("objectId"))) {
+            // planKey not found
+            return null;
+        }
+
+        //save the updated object
+        objectId = this.savePlan(json, objectType);
+
+        return objectId;
+    }
+
     private boolean isStringArray(String str) {
         if (str.indexOf('[') < str.indexOf(']')) {
             if (str.substring((str.indexOf('[') + 1), str.indexOf(']')).split(", ").length > 0)
