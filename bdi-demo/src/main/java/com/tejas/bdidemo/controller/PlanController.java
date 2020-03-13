@@ -1,15 +1,16 @@
 package com.tejas.bdidemo.controller;
 
 import com.tejas.bdidemo.exception.BadRequestException;
+import com.tejas.bdidemo.exception.NotAuthorisedException;
 import com.tejas.bdidemo.exception.PreConditionFailedException;
 import com.tejas.bdidemo.exception.ResourceNotFoundException;
+import com.tejas.bdidemo.security.JWTToken;
 import com.tejas.bdidemo.service.PlanService;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,16 +26,36 @@ import java.util.Map;
 
 
 @RestController
-@RequestMapping("/plan")
 public class PlanController {
 
     PlanService planService = new PlanService();
 
     Map<String, String> cacheMap = new HashMap<String, String>();
 
+    JWTToken jwtToken = new JWTToken();
+
     @ResponseStatus(value = HttpStatus.CREATED)
-    @RequestMapping(method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-    public String savePlan(@RequestBody String json, HttpServletResponse response) {
+    @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/token")
+    public String generateToken() {
+        String token;
+        try {
+            token = jwtToken.generateToken();
+        } catch (Exception e) {
+            throw new BadRequestException(e.getMessage());
+        }
+
+        return "{\"token\": \"" + token + "\"}";
+    }
+
+    @ResponseStatus(value = HttpStatus.CREATED)
+    @RequestMapping(method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, value = "/plan")
+    public String savePlan(@RequestBody String json, HttpServletRequest request, HttpServletResponse response) {
+
+        // Authorization
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        if (!this.jwtToken.isTokenValid(token)){
+            throw new NotAuthorisedException("The token is not valid");
+        }
 
         JSONObject plan = new JSONObject(json);
 
@@ -58,8 +79,14 @@ public class PlanController {
     }
 
     @ResponseStatus(value = HttpStatus.OK)
-    @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/{objectId}")
+    @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/plan/{objectId}")
     public ResponseEntity<String> getPlan(@PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
+
+        // Authorization
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        if (!this.jwtToken.isTokenValid(token)){
+            throw new NotAuthorisedException("The token is not valid");
+        }
 
         String if_none_match = request.getHeader(HttpHeaders.IF_NONE_MATCH);
         if (this.cacheMap.get(objectId) != null && this.cacheMap.get(objectId).equals(if_none_match)) {
@@ -82,8 +109,14 @@ public class PlanController {
     }
 
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @RequestMapping(method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE, value = "/{objectId}")
+    @RequestMapping(method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE, value = "/plan/{objectId}")
     public ResponseEntity<String> deletePlan(@PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
+
+        // Authorization
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        if (!this.jwtToken.isTokenValid(token)){
+            throw new NotAuthorisedException("The token is not valid");
+        }
 
         String if_match = request.getHeader(HttpHeaders.IF_MATCH);
         if (if_match == null || if_match.isEmpty()) {
@@ -104,4 +137,5 @@ public class PlanController {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
     }
+
 }
