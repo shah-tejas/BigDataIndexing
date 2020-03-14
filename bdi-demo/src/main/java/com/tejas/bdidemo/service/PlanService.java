@@ -212,6 +212,52 @@ public class PlanService {
         return objectId;
     }
 
+    // merge the incoming json object with the object in db.
+    public JSONObject mergeJson(JSONObject json, String objectKey) {
+        JSONObject savedObject = this.getPlan(objectKey);
+        if (savedObject == null)
+            return null;
+
+        // iterate the new json object
+        for(String jsonKey : json.keySet()) {
+            Object jsonValue = json.get(jsonKey);
+
+            // check if this is an existing object
+            if (savedObject.get(jsonKey) == null) {
+                savedObject.put(jsonKey, jsonValue);
+            } else {
+                if (jsonValue instanceof JSONObject) {
+                    JSONObject jsonValueObject = (JSONObject)jsonValue;
+                    String jsonObjKey = jsonKey + "_" + jsonValueObject.get("objectId");
+                    if (((JSONObject)savedObject.get(jsonKey)).get("objectId") == jsonValueObject.get("objectId")) {
+                        savedObject.put(jsonKey, jsonValue);
+                    } else {
+                        JSONObject updatedJsonValue = this.mergeJson(jsonValueObject, jsonObjKey);
+                        savedObject.put(jsonKey, updatedJsonValue);
+                    }
+                } else if (jsonValue instanceof JSONArray) {
+                    JSONArray jsonValueArray = (JSONArray) jsonValue;
+                    JSONArray savedJSONArray = savedObject.getJSONArray(jsonKey);
+                    for (int i = 0; i < jsonValueArray.length(); i++) {
+                        JSONObject arrayItem = (JSONObject)jsonValueArray.get(i);
+                        //check if objectId already exists in savedJSONArray
+                        int index = getIndexOfObjectId(savedJSONArray, (String)arrayItem.get("objectId"));
+                        if(index >= 0) {
+                            savedJSONArray.remove(index);
+                        }
+                        savedJSONArray.put(arrayItem);
+                    }
+                    savedObject.put(jsonKey, savedJSONArray);
+                } else {
+                    savedObject.put(jsonKey, jsonValue);
+                }
+            }
+
+        }
+
+        return savedObject;
+    }
+
     private boolean isStringArray(String str) {
         if (str.indexOf('[') < str.indexOf(']')) {
             if (str.substring((str.indexOf('[') + 1), str.indexOf(']')).split(", ").length > 0)
@@ -233,5 +279,19 @@ public class PlanService {
         }
 
         return jsonArray;
+    }
+
+    private int getIndexOfObjectId(JSONArray array, String objectId) {
+        int i = -1;
+
+        for (i = 0; i < array.length(); i++) {
+            JSONObject arrayObj = (JSONObject)array.get(i);
+            String itemId = (String)arrayObj.get("objectId");
+            if (objectId.equals(itemId)){
+                return i;
+            }
+        }
+
+        return i;
     }
 }

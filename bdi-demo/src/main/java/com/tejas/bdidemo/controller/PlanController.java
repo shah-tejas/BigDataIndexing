@@ -152,7 +152,58 @@ public class PlanController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-        @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @ResponseStatus(value = HttpStatus.OK)
+    @RequestMapping(method = RequestMethod.PATCH, produces = MediaType.APPLICATION_JSON_VALUE, value = "/plan/{objectId}")
+    public ResponseEntity<String> patchPlan(@RequestBody String json, @PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
+
+        //authorization
+        String token = request.getHeader("Authorization").replace("Bearer ", "");
+        if (!this.jwtToken.isTokenValid(token)){
+            throw new NotAuthorisedException("The token is not valid");
+        }
+
+        //check etag
+        String if_match = request.getHeader(HttpHeaders.IF_MATCH);
+        if (if_match == null || if_match.isEmpty()) {
+            // etag not provided throw 404
+            throw new ResourceNotFoundException("etag not provided in request");
+        }
+        if (this.cacheMap.get(objectId) != null && !this.cacheMap.get(objectId).equals(if_match)) {
+            // hash found in cache but does not match with etag
+            throw new PreConditionFailedException("etag in request does not match hash in cache");
+        }
+
+        JSONObject plan = new JSONObject(json);
+
+        //merge json with saved value
+        JSONObject mergedJson = this.planService.mergeJson(plan, objectId);
+        if (mergedJson == null) {
+            throw new ResourceNotFoundException("Resource not found");
+        }
+
+        //validate json
+        JSONObject plan_schema = new JSONObject(new JSONTokener(PlanController.class.getResourceAsStream("/plan-schema.json")));
+        Schema schema = SchemaLoader.load(plan_schema);
+        try {
+            schema.validate(mergedJson);
+        } catch (ValidationException e) {
+            throw new BadRequestException(e.getMessage());
+        }
+
+        //update json
+        String objectKey = this.planService.updatePlan(mergedJson, (String)mergedJson.get("objectType"));
+        if (objectKey == null) {
+            throw new BadRequestException("Update failed!");
+        }
+
+        //update etag
+        this.cacheMap.put(objectKey, String.valueOf(mergedJson.hashCode()));
+        response.setHeader(HttpHeaders.ETAG, String.valueOf(mergedJson.hashCode()));
+
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @RequestMapping(method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE, value = "/plan/{objectId}")
     public ResponseEntity<String> deletePlan(@PathVariable String objectId, HttpServletRequest request, HttpServletResponse response) {
 
