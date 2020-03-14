@@ -229,7 +229,7 @@ public class PlanService {
                 if (jsonValue instanceof JSONObject) {
                     JSONObject jsonValueObject = (JSONObject)jsonValue;
                     String jsonObjKey = jsonKey + "_" + jsonValueObject.get("objectId");
-                    if (((JSONObject)savedObject.get(jsonKey)).get("objectId") == jsonValueObject.get("objectId")) {
+                    if (((JSONObject)savedObject.get(jsonKey)).get("objectId").equals(jsonValueObject.get("objectId"))) {
                         savedObject.put(jsonKey, jsonValue);
                     } else {
                         JSONObject updatedJsonValue = this.mergeJson(jsonValueObject, jsonObjKey);
