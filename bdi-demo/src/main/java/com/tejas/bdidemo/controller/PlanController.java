@@ -237,6 +237,8 @@ public class PlanController {
             throw new BadRequestException(e.getMessage());
         }
 
+        JSONObject planToIndex = new JSONObject(mergedJson.toString());
+
         //update json
         String objectKey = this.planService.updatePlan(mergedJson, (String)mergedJson.get("objectType"));
         if (objectKey == null) {
@@ -248,7 +250,7 @@ public class PlanController {
         actionMap.put("operation", "SAVE");
         actionMap.put("uri", "http://localhost:9200");
         actionMap.put("index", "planindex");
-        actionMap.put("body", mergedJson.toString());
+        actionMap.put("body", planToIndex.toString());
 
         System.out.println("Sending message: " + actionMap);
 
