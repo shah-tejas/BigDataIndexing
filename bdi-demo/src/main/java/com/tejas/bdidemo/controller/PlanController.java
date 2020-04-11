@@ -1,5 +1,6 @@
 package com.tejas.bdidemo.controller;
 
+import com.tejas.bdidemo.BdiDemoApplication;
 import com.tejas.bdidemo.exception.BadRequestException;
 import com.tejas.bdidemo.exception.NotAuthorisedException;
 import com.tejas.bdidemo.exception.PreConditionFailedException;
@@ -11,6 +12,8 @@ import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -28,11 +31,33 @@ import java.util.Map;
 @RestController
 public class PlanController {
 
+    static int count = 0;
+
+    @Autowired
+    private RabbitTemplate template;
+
     PlanService planService = new PlanService();
 
     Map<String, String> cacheMap = new HashMap<String, String>();
 
     JWTToken jwtToken = new JWTToken();
+
+    @RequestMapping(method = RequestMethod.GET, value = "/test")
+    public String index() {
+        PlanController.count++;
+
+        Map<String, String> actionMap = new HashMap<>();
+        actionMap.put("operation", "get");
+        actionMap.put("uri", "http://localhost:9200/testindex/_doc/" + PlanController.count);
+        String body = "{\"message\": \"test\", \"value\": 0 }";
+        actionMap.put("body", body);
+
+        System.out.println("Sending message: " + actionMap);
+
+        template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
+
+        return Integer.toString(PlanController.count);
+    }
 
     @ResponseStatus(value = HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/token")

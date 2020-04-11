@@ -26,7 +26,7 @@ public class JWTToken {
 
         // Prepare JWT with claims set with 2 mins ttl
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .expirationTime(new Date(new Date().getTime() + 120 * 1000))
+                .expirationTime(new Date(new Date().getTime() + 300 * 1000))
                 .build();
 
         SignedJWT signedJWT = new SignedJWT(

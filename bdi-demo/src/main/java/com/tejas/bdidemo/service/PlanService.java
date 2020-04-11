@@ -2,9 +2,11 @@ package com.tejas.bdidemo.service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -16,7 +18,7 @@ public class PlanService {
 
     private JedisPool getJedisPool() {
         if (this.jedisPool == null) {
-            return new JedisPool();
+            this.jedisPool = new JedisPool();
         }
         return this.jedisPool;
     }
