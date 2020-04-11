@@ -42,22 +42,22 @@ public class PlanController {
 
     JWTToken jwtToken = new JWTToken();
 
-    @RequestMapping(method = RequestMethod.GET, value = "/test")
-    public String index() {
-        PlanController.count++;
-
-        Map<String, String> actionMap = new HashMap<>();
-        actionMap.put("operation", "get");
-        actionMap.put("uri", "http://localhost:9200/testindex/_doc/" + PlanController.count);
-        String body = "{\"message\": \"test\", \"value\": 0 }";
-        actionMap.put("body", body);
-
-        System.out.println("Sending message: " + actionMap);
-
-        template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
-
-        return Integer.toString(PlanController.count);
-    }
+//    @RequestMapping(method = RequestMethod.GET, value = "/test")
+//    public String index() {
+//        PlanController.count++;
+//
+//        Map<String, String> actionMap = new HashMap<>();
+//        actionMap.put("operation", "get");
+//        actionMap.put("uri", "http://localhost:9200/testindex/_doc/" + PlanController.count);
+//        String body = "{\"message\": \"test\", \"value\": 0 }";
+//        actionMap.put("body", body);
+//
+//        System.out.println("Sending message: " + actionMap);
+//
+//        template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
+//
+//        return Integer.toString(PlanController.count);
+//    }
 
     @ResponseStatus(value = HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, value = "/token")
@@ -95,6 +95,17 @@ public class PlanController {
         }
 
         String objectKey = this.planService.savePlan(plan, (String)plan.get("objectType"));
+
+        // index object
+        Map<String, String> actionMap = new HashMap<>();
+        actionMap.put("operation", "SAVE");
+        actionMap.put("uri", "http://localhost:9200");
+        actionMap.put("index", "planindex");
+        actionMap.put("body", json);
+
+        System.out.println("Sending message: " + actionMap);
+
+        template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
 
         // cache the objectId
         this.cacheMap.put(objectKey, String.valueOf(plan.hashCode()));
@@ -170,6 +181,17 @@ public class PlanController {
             throw new BadRequestException("Update failed!");
         }
 
+        // index object
+        Map<String, String> actionMap = new HashMap<>();
+        actionMap.put("operation", "SAVE");
+        actionMap.put("uri", "http://localhost:9200");
+        actionMap.put("index", "planindex");
+        actionMap.put("body", json);
+
+        System.out.println("Sending message: " + actionMap);
+
+        template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
+
         //update etag
         this.cacheMap.put(objectKey, String.valueOf(plan.hashCode()));
         response.setHeader(HttpHeaders.ETAG, String.valueOf(plan.hashCode()));
@@ -221,6 +243,17 @@ public class PlanController {
             throw new BadRequestException("Update failed!");
         }
 
+        // index object
+        Map<String, String> actionMap = new HashMap<>();
+        actionMap.put("operation", "SAVE");
+        actionMap.put("uri", "http://localhost:9200");
+        actionMap.put("index", "planindex");
+        actionMap.put("body", mergedJson.toString());
+
+        System.out.println("Sending message: " + actionMap);
+
+        template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
+
         //update etag
         this.cacheMap.put(objectKey, String.valueOf(mergedJson.hashCode()));
         response.setHeader(HttpHeaders.ETAG, String.valueOf(mergedJson.hashCode()));
@@ -251,6 +284,19 @@ public class PlanController {
                 // deletion failed
                 throw new ResourceNotFoundException("Plan not found");
             }
+
+            String indexObjectId = objectId.split("_")[1];
+
+            // index object
+            Map<String, String> actionMap = new HashMap<>();
+            actionMap.put("operation", "DELETE");
+            actionMap.put("uri", "http://localhost:9200");
+            actionMap.put("index", "planindex");
+            actionMap.put("body", "{ \"objectId\" : \"" + indexObjectId + "\" }");
+
+            System.out.println("Sending message: " + actionMap);
+
+            template.convertAndSend(BdiDemoApplication.MESSAGE_QUEUE, actionMap);
 
             //delete the cache
             this.cacheMap.remove(objectId);
