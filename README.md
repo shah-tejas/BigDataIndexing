@@ -24,3 +24,124 @@
 6. Enqueue object in RabbitMQ queue to index the object
 7. Dequque from RabbitMQ queue and index data in ElasticServer
 8. Implement Search queries using Kibana Console to retrieve indexed data
+
+### Steps to run:
+1. Install the Prerequisites for the project:
+    - Redis Server (https://redis.io/download)
+    - ElasticSearch (https://www.elastic.co/downloads/elasticsearch)
+    - Kibana (https://www.elastic.co/downloads/kibana)
+    - RabbitMQ Server (https://www.rabbitmq.com/download.html)
+2. Start the Redis Server with the `redis-server` command
+3. Start the ElasticSearch server with the `elasticsearch` command
+4. Start Kibana with the `kibana` command
+5. Start RabbitMQ server with the `rabbitmq-server` command
+6. Clone the repository `git clone git@github.com:shah-tejas/BigDataIndexing.git`
+7. Navigate to the project directory
+   ```
+   cd BigDataIndexing/bdi-demo
+   ```
+8. Start the Spring Boot application
+   ```
+   mvn clean install spring-boot:run
+   ```
+
+This would start the server. Create the data using the REST API endpoints and
+query the indexed data on Kibana Console.
+
+
+### API Endpoints
+(A Sample JSON Object for the plan can be found [here](./usecase.json))
+
+- GET `/token` - This generates a RSA-signed JWT token used to authenticate future requests.
+- POST `/plan` - Creates a new plan provided in the request body
+- PUT `/plan/{id}` - Updates an existing plan provided by the id
+    - A valid Etag for the object should also be provided in the `If-Match` HTTP Request Header
+- PATCH `/plan/{id}` - Patches an existing plan provided by the id
+    - A valid Etag for the object should also be provided in the `If-Match` HTTP Request Header
+- GET `/plan/{id}` - Fetches an existing plan provided by the id
+    - An Etag for the object can be provided in the `If-None-Match` HTTP Request Header
+    - If the request is successful, a valid Etag for the object is returned in the `ETag` HTTP Response Header
+- DELETE `/plan/{id}` - Deletes an existing plan provided by the id
+    - A valid Etag for the object should also be provided in the `If-Match` HTTP Request Header
+
+### Sample Queries to search the indexed data:
+Sample queries can be fired on the [Kibana Console](http://localhost:5601/app/kibana#/dev_tools/console) to retrieve the indexed data
+
+1. Query all plans
+    ```
+    GET planindex/_search
+    {
+      "query": {
+        "match_all": {}
+      }
+    }
+    ```
+2. Query based on a nested object's objectId, alongwith the nested object
+   ```
+   GET planindex/_search
+   {
+     "query": {
+       "nested": {
+         "path": "linkedPlanServices.linkedService",
+         "query": {
+           "match": {
+                 "linkedPlanServices.linkedService.objectId": "1234520xvc30asdf-502"
+           }
+         },
+         "inner_hits": {}
+       }
+     }
+   }
+   ```
+3. Query wildcard text fields
+   ```
+   GET planindex/_search
+   {
+     "query": {
+       "wildcard": {
+         "_org": {
+           "value": "example*"
+         }
+       }
+     }
+   }
+   ```
+4. Query nested object's wildcard text fields
+   ```
+   GET planindex/_search
+   {
+     "query": {
+       "nested": {
+         "path": "linkedPlanServices.linkedService",
+         "query": {
+           "wildcard": {
+             "linkedPlanServices.linkedService.name.keyword": {
+               "value": "Year*"
+             }
+           }
+         },
+         "inner_hits": {}
+       }
+     }
+   }
+   ```
+5. Range query on a numeric field
+   ```
+   GET planindex/_search
+   {
+     "query": {
+       "nested": {
+         "path": "planCostShares",
+         "query": {
+           "range": {
+             "planCostShares.copay": {
+               "gte": 20,
+               "lte": 35
+             }
+           }
+         },
+         "inner_hits": {}
+       }
+     }
+   }
+   ```
