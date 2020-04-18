@@ -20,9 +20,9 @@
 2. Validate further API requests using the Bearer Token
 3. Create JSON Object using the `POST` HTTP method
 4. Validate incoming JSON Object using the respective JSON Schema
-5. De-Structure/Structure hierarchial JSON Object while storing in Redis key-value store
+5. De-Structure hierarchial JSON Object while storing in Redis key-value store
 6. Enqueue object in RabbitMQ queue to index the object
-7. Dequque from RabbitMQ queue and index data in ElasticServer
+7. Dequeue from RabbitMQ queue and index data in ElasticServer
 8. Implement Search queries using Kibana Console to retrieve indexed data
 
 ### Steps to run:
