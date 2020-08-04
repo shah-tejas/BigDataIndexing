@@ -1,4 +1,4 @@
-## BigDataIndexing - Project to demonstrate Indexing of Schemaless, Structured JSON objects.
+## BigDataIndexing - Project to demonstrate Indexing of Structured JSON objects.
 
 ### Tech Stack
 - Spring Boot (Java)
